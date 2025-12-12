@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mock CRM API</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 24px; line-height: 1.6; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
+    pre { background: #0b1021; color: #e5e7eb; padding: 12px; border-radius: 10px; }
+    h1, h2 { margin-bottom: 0; }
+  </style>
+</head>
+<body>
+  <h1>Mock CRM</h1>
+  <p>Docker一発で起動できる認証付きのテスト用APIです。初期データが投入済みで、quickshotの操作練習に利用できます。</p>
+
+  <h2>エンドポイント</h2>
+  <ul>
+    <li><code>POST /auth/login</code> ユーザー: <code>admin@example.com</code> / パスワード: <code>secret</code></li>
+    <li><code>GET /health</code> ヘルスチェック</li>
+    <li><code>GET /api/customers</code> 顧客一覧 (Bearer必須)</li>
+    <li><code>GET /api/customers/:id</code> 顧客詳細 (Bearer必須)</li>
+    <li><code>POST /api/customers</code> 顧客作成 (Bearer必須)</li>
+    <li><code>PUT /api/customers/:id</code> 顧客更新 (Bearer必須)</li>
+    <li><code>GET /api/opportunities</code> 案件一覧 (Bearer必須)</li>
+  </ul>
+
+  <h2>レスポンス例</h2>
+  <pre>{
+  "data": [{"id":1,"name":"Acme Corp","plan":"enterprise","owner":"Admin User"}]
+}</pre>
+
+  <h2>トークン取得</h2>
+  <p>以下のJSONを <code>/auth/login</code> に送信してください。</p>
+  <pre>{
+  "email": "admin@example.com",
+  "password": "secret"
+}</pre>
+  <p>戻り値の <code>token</code> を <code>Authorization: Bearer mock-crm-token</code> として利用します。</p>
+</body>
+</html>

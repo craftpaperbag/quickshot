@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  mock-crm:
+    build: ./mock-crm
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./mock-crm/data:/app/data
+    restart: unless-stopped

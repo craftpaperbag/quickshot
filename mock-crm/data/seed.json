@@ -1,0 +1,12 @@
+{
+  "customers": [
+    { "id": 1, "name": "Acme Corp", "plan": "enterprise", "owner": "Admin User" },
+    { "id": 2, "name": "Sunrise Inc", "plan": "pro", "owner": "Sales Lead" },
+    { "id": 3, "name": "Northwind", "plan": "starter", "owner": "Admin User" }
+  ],
+  "opportunities": [
+    { "id": 1, "customerId": 1, "title": "Renewal 2025", "amount": 1200000 },
+    { "id": 2, "customerId": 2, "title": "Upgrade to Pro+", "amount": 400000 },
+    { "id": 3, "customerId": 3, "title": "Add support pack", "amount": 120000 }
+  ]
+}

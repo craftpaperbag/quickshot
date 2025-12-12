@@ -1,0 +1,17 @@
+{
+  "name": "quickshot",
+  "version": "1.0.0",
+  "description": "Simple API caller",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node tests/mockApiSmoke.js",
+    "test:mock": "node tests/mockApiSmoke.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
