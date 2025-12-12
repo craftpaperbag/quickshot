@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>quickshot | ローカルAPIプレイグラウンド</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>quickshot</h1>
+      <p class="subtitle">ローカル環境で完結するシンプルなAPIコールツール</p>
+    </div>
+    <div class="status-pill" id="autoSaveStatus">一時保存未実施</div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>リクエスト設定</h2>
+        <p class="panel-sub">URL・ヘッダー・ボディを柔軟に組み立て、セッションとして保存できます。</p>
+      </div>
+
+      <div class="field-group">
+        <label for="requestName">リクエスト名 <span class="hint">(履歴や保存の目印に)</span></label>
+        <input id="requestName" type="text" placeholder="例: 顧客一覧取得" />
+      </div>
+
+      <div class="grid two">
+        <div class="field-group">
+          <label for="method">メソッド</label>
+          <select id="method">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>PATCH</option>
+            <option>DELETE</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="url">リクエストURL</label>
+          <input id="url" type="url" placeholder="https://api.example.com/v1/customers" />
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>ヘッダー</label>
+        <div id="headers"></div>
+        <button class="ghost" id="addHeader">＋ ヘッダーを追加</button>
+      </div>
+
+      <div class="field-group">
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="json" aria-selected="true">JSONボディ</button>
+          <button class="tab" data-tab="yaml">YAML → JSON 変換</button>
+        </div>
+        <div class="tab-content" id="jsonTab" role="tabpanel">
+          <textarea id="jsonBody" spellcheck="false" placeholder='{"name": "例: 山田", "plan": "pro"}'></textarea>
+          <div class="inline-actions">
+            <button class="ghost" id="formatJson">JSONを整形</button>
+            <span class="hint">ボディが空の場合、送信時には未設定として扱われます。</span>
+          </div>
+        </div>
+        <div class="tab-content hidden" id="yamlTab" role="tabpanel">
+          <textarea id="yamlBody" spellcheck="false" placeholder="name: 例: 鈴木\nplan: starter"></textarea>
+          <div class="inline-actions">
+            <button class="ghost" id="convertYaml">YAMLをJSONに変換</button>
+            <span class="hint">シンプルなYAML形式に対応しています。配列はハイフン(-)で記述してください。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <div class="button-row">
+          <button id="send" class="primary">送信する</button>
+          <button id="reset" class="ghost">リセット</button>
+        </div>
+        <div class="button-row wrap">
+          <button id="saveSession">一時保存</button>
+          <button id="loadSession" class="ghost">読み込み</button>
+          <button id="exportSession" class="ghost">入力内容を書き出し</button>
+          <label class="file-button ghost">書き出しファイルを読み込む<input id="importSession" type="file" accept="application/json" /></label>
+        </div>
+      </div>
+
+      <div class="helper">
+        <h3>使い方メモ</h3>
+        <ul>
+          <li>モックCRMを起動後、<code>http://localhost:4000</code> をURLに設定するとすぐに試せます。</li>
+          <li>認証は <code>Authorization: Bearer mock-crm-token</code> を指定します。<span class="hint">(ログインAPIで取得可)</span></li>
+          <li>入力欄は自動で一時保存されます。ブラウザを閉じても復元できます。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>レスポンス</h2>
+        <p class="panel-sub">実行結果・ヘッダー・ログをまとめて確認し、必要に応じて書き出せます。</p>
+      </div>
+
+      <div class="response-head">
+        <div>
+          <div id="statusLine" class="badge muted">未送信</div>
+          <div id="timing" class="hint">-</div>
+        </div>
+        <div class="button-row">
+          <button class="ghost" id="downloadResponse" disabled>結果を書き出す</button>
+          <button class="ghost" id="copyResponse" disabled>コピー</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>ボディ</label>
+        <pre id="responseBody" class="codeblock muted">ここに結果が表示されます。</pre>
+      </div>
+
+      <div class="field-group">
+        <label>レスポンスヘッダー</label>
+        <details>
+          <summary>展開する</summary>
+          <pre id="responseHeaders" class="codeblock muted"></pre>
+        </details>
+      </div>
+
+      <div class="field-group">
+        <label>エラー詳細</label>
+        <details>
+          <summary>展開する</summary>
+          <pre id="errorDetails" class="codeblock muted"></pre>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div>
+      <strong>テスト機能</strong>
+      <p class="hint">モックCRMの <code>/health</code> にアクセスして動作確認したり、<code>tests/mockApiSmoke.js</code> を実行して自動テストできます。</p>
+    </div>
+    <div class="hint">動作はブラウザ単体で完結します。ネットワーク接続なしで利用できます。</div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

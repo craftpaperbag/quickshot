@@ -1,0 +1,76 @@
+openapi: 3.0.0
+info:
+  title: Mock CRM API
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000
+paths:
+  /auth/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: OK
+  /health:
+    get:
+      summary: Healthcheck
+      responses:
+        '200': { description: OK }
+  /api/customers:
+    get:
+      summary: Customer list
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Create customer
+      security:
+        - bearerAuth: []
+      responses:
+        '201': { description: Created }
+  /api/customers/{id}:
+    get:
+      summary: Customer detail
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: OK }
+    put:
+      summary: Update customer
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: OK }
+  /api/opportunities:
+    get:
+      summary: Opportunity list
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: OK }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
