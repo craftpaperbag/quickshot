@@ -1,0 +1,2 @@
+# quickshot
+Simple API caller
