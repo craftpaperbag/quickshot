@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div id="toastContainer" class="toast-container"></div>
   <header class="app-header">
     <div>
       <h1>quickshot</h1>
@@ -73,7 +74,7 @@
 
       <div class="actions">
         <div class="button-row">
-          <button id="send" class="primary">送信する</button>
+          <button id="send" class="primary prominent">送信する</button>
           <button id="reset" class="ghost">リセット</button>
         </div>
         <div class="button-row wrap">
@@ -82,6 +83,19 @@
           <button id="exportSession" class="ghost">入力内容を書き出し</button>
           <label class="file-button ghost">書き出しファイルを読み込む<input id="importSession" type="file" accept="application/json" /></label>
         </div>
+      </div>
+
+      <div class="field-group">
+        <div class="saved-controls">
+          <label>保存したリクエスト</label>
+          <div class="button-row wrap">
+            <button id="saveRequest">現在の内容を保存</button>
+            <button id="downloadSaved" class="ghost">一覧を書き出し</button>
+            <label class="file-button ghost">一覧を読み込む<input id="importSaved" type="file" accept="application/json" /></label>
+          </div>
+        </div>
+        <div id="savedEmpty" class="hint">まだ保存されたリクエストはありません。</div>
+        <ul id="savedRequests" class="saved-list"></ul>
       </div>
 
       <div class="helper">
@@ -94,7 +108,7 @@
       </div>
     </section>
 
-    <section class="panel">
+    <section class="panel" id="responsePanel">
       <div class="panel-head">
         <h2>レスポンス</h2>
         <p class="panel-sub">実行結果・ヘッダー・ログをまとめて確認し、必要に応じて書き出せます。</p>
@@ -118,10 +132,7 @@
 
       <div class="field-group">
         <label>レスポンスヘッダー</label>
-        <details>
-          <summary>展開する</summary>
-          <pre id="responseHeaders" class="codeblock muted"></pre>
-        </details>
+        <pre id="responseHeaders" class="codeblock muted"></pre>
       </div>
 
       <div class="field-group">
@@ -139,8 +150,22 @@
       <strong>テスト機能</strong>
       <p class="hint">モックCRMの <code>/health</code> にアクセスして動作確認したり、<code>tests/mockApiSmoke.js</code> を実行して自動テストできます。</p>
     </div>
-    <div class="hint">動作はブラウザ単体で完結します。ネットワーク接続なしで利用できます。</div>
+    <div class="hint footer-links">
+      <span>動作はブラウザ単体で完結します。ネットワーク接続なしで利用できます。</span>
+      <a href="https://github.com/openai/quickshot" target="_blank" rel="noreferrer">GitHubリポジトリを見る</a>
+      <span class="codex-note">このツールはCodexで生成しました。</span>
+    </div>
   </footer>
+
+  <div id="confirmModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-body">
+      <p id="modalText">この保存済みリクエストを削除してよろしいですか？</p>
+      <div class="button-row">
+        <button id="confirmDelete" class="primary">削除する</button>
+        <button id="cancelDelete" class="ghost">キャンセル</button>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

@@ -28,6 +28,17 @@
     exportSession: document.getElementById('exportSession'),
     importSession: document.getElementById('importSession'),
     autoSaveStatus: document.getElementById('autoSaveStatus'),
+    responsePanel: document.getElementById('responsePanel'),
+    toastContainer: document.getElementById('toastContainer'),
+    saveRequest: document.getElementById('saveRequest'),
+    savedRequests: document.getElementById('savedRequests'),
+    savedEmpty: document.getElementById('savedEmpty'),
+    downloadSaved: document.getElementById('downloadSaved'),
+    importSaved: document.getElementById('importSaved'),
+    confirmModal: document.getElementById('confirmModal'),
+    confirmDelete: document.getElementById('confirmDelete'),
+    cancelDelete: document.getElementById('cancelDelete'),
+    modalText: document.getElementById('modalText'),
   };
 
   const tabs = Array.from(document.querySelectorAll('.tab'));
@@ -36,6 +47,8 @@
 
   let lastResponseText = '';
   let lastResponseFilename = '';
+  let savedRequests = [];
+  let pendingDeleteName = '';
 
   function parseValue(raw) {
     const trimmed = raw.trim();
@@ -129,6 +142,7 @@
   function showStatus(text, type = 'info') {
     elements.statusLine.textContent = text;
     elements.statusLine.className = `badge ${type}`;
+    pushToast(text, type);
   }
 
   function pretty(json) {
@@ -202,6 +216,7 @@
     localStorage.setItem('quickshot-session', JSON.stringify(session));
     elements.autoSaveStatus.textContent = manual ? '保存済み' : '自動保存しました';
     elements.autoSaveStatus.classList.add('saved');
+    pushToast(elements.autoSaveStatus.textContent, 'info');
   }
 
   function loadSession(showMessage = true) {
@@ -223,6 +238,180 @@
     saveSession(false);
   }
 
+  function pad(num) {
+    return String(num).padStart(2, '0');
+  }
+
+  function generateRequestName() {
+    const now = new Date();
+    return `req${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`;
+  }
+
+  function collectRequestPayload() {
+    return {
+      requestName: elements.requestName.value,
+      method: elements.method.value,
+      url: elements.url.value,
+      headers: Array.from(elements.headers.querySelectorAll('.header-row')).map((row) => {
+        const [k, v] = row.querySelectorAll('input');
+        return { key: k.value, value: v.value };
+      }),
+      jsonBody: elements.jsonBody.value,
+      yamlBody: elements.yamlBody.value,
+      timestamp: Date.now(),
+    };
+  }
+
+  function persistSavedRequests() {
+    localStorage.setItem('quickshot-requests', JSON.stringify(savedRequests));
+  }
+
+  function renderSavedRequests() {
+    elements.savedRequests.innerHTML = '';
+    if (!savedRequests.length) {
+      elements.savedEmpty.classList.remove('hidden');
+      return;
+    }
+    elements.savedEmpty.classList.add('hidden');
+
+    savedRequests
+      .slice()
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .forEach((req) => {
+        const li = document.createElement('li');
+        li.className = 'saved-item';
+        const meta = document.createElement('div');
+        meta.className = 'saved-meta';
+        const title = document.createElement('span');
+        title.className = 'saved-title';
+        title.textContent = req.requestName || '(名称未設定)';
+        const sub = document.createElement('span');
+        sub.className = 'saved-sub';
+        sub.textContent = `${req.method} ${req.url || '(URLなし)'}`;
+        meta.append(title, sub);
+
+        const buttons = document.createElement('div');
+        buttons.className = 'button-row';
+        const loadBtn = document.createElement('button');
+        loadBtn.textContent = '読み込む';
+        loadBtn.addEventListener('click', () => loadSavedRequest(req.requestName));
+        const delBtn = document.createElement('button');
+        delBtn.className = 'ghost';
+        delBtn.textContent = '削除';
+        delBtn.addEventListener('click', () => openDeleteModal(req.requestName));
+        buttons.append(loadBtn, delBtn);
+
+        li.append(meta, buttons);
+        elements.savedRequests.appendChild(li);
+      });
+  }
+
+  function loadSavedRequest(name) {
+    const found = savedRequests.find((r) => r.requestName === name);
+    if (!found) return;
+    elements.requestName.value = found.requestName || '';
+    elements.method.value = found.method || 'GET';
+    elements.url.value = found.url || '';
+    renderHeaders(found.headers && found.headers.length ? found.headers : defaultHeaders);
+    elements.jsonBody.value = found.jsonBody || '';
+    elements.yamlBody.value = found.yamlBody || '';
+    showStatus('リクエストを読み込みました', 'info');
+    autoSave();
+  }
+
+  function upsertSavedRequest(message = 'リクエストを保存しました') {
+    const payload = collectRequestPayload();
+    if (!payload.requestName.trim()) {
+      payload.requestName = generateRequestName();
+      elements.requestName.value = payload.requestName;
+    }
+    const idx = savedRequests.findIndex((r) => r.requestName === payload.requestName);
+    if (idx >= 0) {
+      savedRequests[idx] = payload;
+    } else {
+      savedRequests.push(payload);
+    }
+    persistSavedRequests();
+    renderSavedRequests();
+    pushToast(message, 'success');
+  }
+
+  function downloadSavedRequests() {
+    if (!savedRequests.length) {
+      pushToast('保存されたリクエストがありません', 'info');
+      return;
+    }
+    download('quickshot-requests.json', JSON.stringify(savedRequests, null, 2));
+  }
+
+  function importSavedRequests(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (!Array.isArray(parsed)) throw new Error('配列形式のJSONではありません');
+        let added = 0;
+        parsed.forEach((req) => {
+          if (!req || typeof req !== 'object') return;
+          const name = req.requestName && String(req.requestName).trim() ? req.requestName : generateRequestName();
+          const payload = {
+            requestName: name,
+            method: req.method || 'GET',
+            url: req.url || '',
+            headers: req.headers || defaultHeaders,
+            jsonBody: req.jsonBody || '',
+            yamlBody: req.yamlBody || '',
+            timestamp: req.timestamp || Date.now(),
+          };
+          const exists = savedRequests.findIndex((r) => r.requestName === name);
+          if (exists >= 0) {
+            savedRequests[exists] = payload;
+          } else {
+            savedRequests.push(payload);
+          }
+          added += 1;
+        });
+        persistSavedRequests();
+        renderSavedRequests();
+        pushToast(`${added}件のリクエストを追加しました`, 'success');
+      } catch (err) {
+        pushToast(`読み込みに失敗しました: ${err.message}`, 'error');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function pushToast(text, type = 'info') {
+    if (!elements.toastContainer) return;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = text;
+    elements.toastContainer.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  function openDeleteModal(name) {
+    pendingDeleteName = name;
+    elements.modalText.textContent = `${name} を削除してよろしいですか？`;
+    elements.confirmModal.classList.remove('hidden');
+  }
+
+  function closeDeleteModal() {
+    elements.confirmModal.classList.add('hidden');
+    pendingDeleteName = '';
+  }
+
+  function confirmDelete() {
+    if (!pendingDeleteName) return;
+    savedRequests = savedRequests.filter((r) => r.requestName !== pendingDeleteName);
+    persistSavedRequests();
+    renderSavedRequests();
+    pushToast('削除しました', 'success');
+    closeDeleteModal();
+  }
+
   async function sendRequest() {
     const method = elements.method.value;
     const url = elements.url.value;
@@ -238,11 +427,16 @@
       }
     }
 
+    upsertSavedRequest('送信内容を保存しました');
+
     elements.responseBody.textContent = '送信中...';
     elements.responseHeaders.textContent = '';
     elements.errorDetails.textContent = '';
     showStatus('送信中', 'info');
     const start = performance.now();
+    if (elements.responsePanel) {
+      elements.responsePanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
     try {
       const response = await fetch(url, { method, headers, body: method === 'GET' || method === 'DELETE' ? undefined : body });
@@ -266,6 +460,7 @@
       elements.statusLine.className = `badge ${response.ok ? 'success' : 'error'}`;
       elements.copyResponse.disabled = false;
       elements.downloadResponse.disabled = false;
+      showStatus('レスポンスを取得しました', response.ok ? 'success' : 'error');
     } catch (err) {
       elements.timing.textContent = '-';
       elements.statusLine.textContent = '送信に失敗しました';
@@ -275,6 +470,7 @@
       lastResponseText = '';
       elements.copyResponse.disabled = true;
       elements.downloadResponse.disabled = true;
+      showStatus('送信に失敗しました', 'error');
     }
   }
 
@@ -366,6 +562,11 @@
   elements.importSession.addEventListener('change', importSession);
   elements.copyResponse.addEventListener('click', copyResponse);
   elements.downloadResponse.addEventListener('click', downloadResponse);
+  elements.saveRequest.addEventListener('click', () => upsertSavedRequest());
+  elements.downloadSaved.addEventListener('click', downloadSavedRequests);
+  elements.importSaved.addEventListener('change', importSavedRequests);
+  elements.confirmDelete.addEventListener('click', confirmDelete);
+  elements.cancelDelete.addEventListener('click', closeDeleteModal);
   tabs.forEach((tab) => tab.addEventListener('click', () => handleTabSwitch(tab)));
 
   [elements.requestName, elements.method, elements.url, elements.jsonBody, elements.yamlBody].forEach((el) => {
@@ -374,4 +575,9 @@
 
   renderHeaders();
   loadSession(false);
+  const savedRaw = localStorage.getItem('quickshot-requests');
+  if (savedRaw) {
+    try { savedRequests = JSON.parse(savedRaw) || []; } catch (_) { savedRequests = []; }
+  }
+  renderSavedRequests();
 })();
